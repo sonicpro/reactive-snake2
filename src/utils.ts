@@ -1,18 +1,25 @@
 import { Point2D } from "./types";
 
 export function move(snake: Array<Point2D>, direction: Point2D) {
-    let headX = snake[0].x;
-    let headY = snake[0].y;
+  let headX = snake[0].x;
+  let headY = snake[0].y;
   
-    headX += 1 * direction.x;
-    headY += 1 * direction.y;
+  headX += 1 * direction.x;
+  headY += 1 * direction.y;
   
-    // Tail becomes head;
-    let tail = snake.pop();
-    tail.x = headX;
-    tail.y = headY;
+  // Tail becomes head;
+  let tail = snake.pop();
+  tail.x = headX;
+  tail.y = headY;
   
-    snake.unshift(tail);
+  snake.unshift(tail);
   
-    return snake;
+   return snake;
+}
+
+export function oppositeDirectionFilter(accum: Point2D, current: Point2D): Point2D {
+  if (accum.x === -current.x || accum.y === -current.y) {
+    return accum;
   }
+  return current;
+}

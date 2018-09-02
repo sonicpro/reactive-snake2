@@ -3,25 +3,37 @@ import { animationFrameScheduler,
     interval,
     Observable,
     of } from "rxjs";
-import { switchMap, scan, share, map } from "rxjs/operators";
+import { switchMap,
+    scan,
+    map,
+    startWith,
+    filter, 
+    distinctUntilChanged,
+    withLatestFrom} from "rxjs/operators";
 import { SPEED, DIRECTIONS, FPS } from "./constants";
 import { Key, Point2D } from "./types";
-import { move } from "./utils";
+import { move, oppositeDirectionFilter } from "./utils";
 import { createCanvasElement, renderSnake } from "./canvas";
 
 const canvas = createCanvasElement();
 const ctx: CanvasRenderingContext2D = canvas.getContext("2d");
 document.getElementById("canvasWrapper").appendChild(canvas);
 
+const INITIAL_DIRECTION = DIRECTIONS[Key.RIGHT];
+
 // "Base" Obsevables.
 const ticks$: Observable<number> = interval(SPEED);
 const keydown$: Observable<Event> = fromEvent(document, "keydown");
 const frames$: Observable<number> = interval(1000 / FPS, animationFrameScheduler);
-
-const INITIAL_DIRECTION = DIRECTIONS[Key.RIGHT];
+const direction$: Observable<Point2D> = keydown$.pipe(
+    map((event: KeyboardEvent) => DIRECTIONS[event.keyCode]),
+    filter(direction => !! direction),
+    scan(oppositeDirectionFilter),
+    startWith(INITIAL_DIRECTION),
+    distinctUntilChanged()
+);
 
 function createGame(frameNumber$: Observable<number>) {
-    const direction$ = of(INITIAL_DIRECTION);
     const topLeft: Point2D = { x:0, y:0 };
     const snake: Array<Point2D> = [ topLeft,
         { ...topLeft, x: 1 },
@@ -31,9 +43,8 @@ function createGame(frameNumber$: Observable<number>) {
     
     // Run the snake - evaluate the new position based on the current one.
     return ticks$.pipe(
-        switchMap(_ => direction$),
-        scan(move, snake),
-        share()
+        withLatestFrom(direction$, (_, direction$) => direction$),
+        scan(move, snake)
     );
 }
 
