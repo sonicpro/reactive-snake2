@@ -6,7 +6,7 @@ export interface Point2D {
   export interface Scene {
     snake: Array<Point2D>;
     apples: Array<Point2D>;
-    score: number;
+    score?: number;
   }
   
   export interface Directions {
@@ -19,4 +19,3 @@ export interface Point2D {
     UP = 38,
     DOWN = 40
   }
-  

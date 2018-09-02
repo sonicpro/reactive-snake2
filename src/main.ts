@@ -2,18 +2,20 @@ import { animationFrameScheduler,
     fromEvent,
     interval,
     Observable,
-    of } from "rxjs";
+    of,
+    combineLatest } from "rxjs";
 import { switchMap,
     scan,
     map,
     startWith,
     filter, 
     distinctUntilChanged,
-    withLatestFrom} from "rxjs/operators";
+    withLatestFrom,
+    first } from "rxjs/operators";
 import { SPEED, DIRECTIONS, FPS } from "./constants";
-import { Key, Point2D } from "./types";
+import { Scene, Key, Point2D } from "./types";
 import { move, oppositeDirectionFilter } from "./utils";
-import { createCanvasElement, renderSnake } from "./canvas";
+import { createCanvasElement, renderScene, COLS, ROWS } from "./canvas";
 
 const canvas = createCanvasElement();
 const ctx: CanvasRenderingContext2D = canvas.getContext("2d");
@@ -32,29 +34,32 @@ const direction$: Observable<Point2D> = keydown$.pipe(
     startWith(INITIAL_DIRECTION),
     distinctUntilChanged()
 );
+const apples$: Observable<Point2D[]> = of([{ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) },
+    { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }]);
 
-function createGame(frameNumber$: Observable<number>) {
+function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
     const topLeft: Point2D = { x:0, y:0 };
     const snake: Array<Point2D> = [ topLeft,
         { ...topLeft, x: 1 },
         { ...topLeft, x: 2 },
         { ...topLeft, x: 3 },
         { ...topLeft, x: 4 }];
-    
+
     // Run the snake - evaluate the new position based on the current one.
-    return ticks$.pipe(
-        withLatestFrom(direction$, (_, direction$) => direction$),
+    const snake$ = ticks$.pipe(
+        withLatestFrom(direction$, (_, direction) => direction),
         scan(move, snake)
     );
+    return combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
 }
 
-const game$ = of("Start Game").pipe(
+const game$: Observable<Scene> = of("Start Game").pipe(
     map(_ => frames$),
-    switchMap(createGame)
+    switchMap(gameLoop)
 );
 
 const startGame = () => game$.subscribe(
-    snake => renderSnake(ctx, snake)
+    snake => renderScene(ctx, snake)
 );
 
 startGame();

@@ -19,9 +19,10 @@ function getSegmentColor(index: number) {
     return index === 0 ? 'black' : '#2196f3';
 }
 
-export function renderSnake(ctx: CanvasRenderingContext2D, snake: Array<Point2D>) {
+export function renderScene(ctx: CanvasRenderingContext2D, scene: Scene) {
     renderBackground(ctx);
-    snake.forEach((segment, index) => paintCell(ctx, wrapBounds(segment), getSegmentColor(index)));
+    scene.apples.forEach(renderApple, ctx);
+    scene.snake.forEach((segment, index) => paintCell(ctx, wrapBounds(segment), getSegmentColor(index)));
 }
 
 function wrapBounds(point: Point2D) {
@@ -42,4 +43,8 @@ function paintCell(ctx: CanvasRenderingContext2D, point: Point2D, color: string)
 function renderBackground(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = '#EEE';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+}
+
+function renderApple(point: Point2D) {
+    paintCell(this, point, "#F00");
 }
