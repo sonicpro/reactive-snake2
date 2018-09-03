@@ -3,7 +3,8 @@ import { animationFrameScheduler,
     interval,
     Observable,
     of,
-    combineLatest } from "rxjs";
+    combineLatest,
+    BehaviorSubject } from "rxjs";
 import { switchMap,
     scan,
     map,
@@ -11,7 +12,9 @@ import { switchMap,
     filter, 
     distinctUntilChanged,
     withLatestFrom,
-    share } from "rxjs/operators";
+    share,
+    tap,
+    skip } from "rxjs/operators";
 import { SPEED, DIRECTIONS, FPS, INITIAL_SNAKE, INITIAL_APPLES, SNAKE_LENGTH } from "./constants";
 import { Scene, Key, Point2D } from "./types";
 import { move, oppositeDirectionFilter, checkCollision } from "./utils";
@@ -36,19 +39,28 @@ const direction$: Observable<Point2D> = keydown$.pipe(
 );
 
 function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
+    const length: BehaviorSubject<number> = new BehaviorSubject(SNAKE_LENGTH);
+
+    const snakeLength$: Observable<number> = length.pipe(
+        scan((accum, value) => accum + value) // On subscribing to "length" increased by SNAKE_LENGTH. Then increased by 1.
+    )
     // Run the snake - evaluate the new position based on the current one.
     const snake$ = ticks$.pipe(
-        withLatestFrom(direction$, (_, direction) => direction),
+        withLatestFrom(direction$, snakeLength$, (_, direction, length) => [direction, length]),
         scan(move, INITIAL_SNAKE),
-        share() // Both combineLatest and apples$ will be subscribed to the same Subject wrapping snake$.
+        share() // Both combineLatest and apples$ will be subscribed to the same Subject that wraps snake$ internally.
     );
     const apples$: Observable<Point2D[]> = snake$.pipe(
         scan(checkCollision, INITIAL_APPLES),
-        distinctUntilChanged()
+        distinctUntilChanged(),
+        share() // Both combineLatest and appleEaten$ will be subscribed to the same Subject that wraps apples$ internally.
     );
-    const length$: Observable<number> = apples$.pipe(
-        scan((accum: number, _: Point2D[]) => { return accum++; }, SNAKE_LENGTH)
-    );
+    // "Publisher" observable, no observer is passed to "subscribe()".
+    let appleEaten$ = apples$.pipe(
+        skip(1),
+        tap(_ => length.next(1)) // Increase snake length by 1.
+    ).subscribe();
+
     return combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
 }
 
