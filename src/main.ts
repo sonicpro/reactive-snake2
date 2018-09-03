@@ -14,7 +14,7 @@ import { switchMap,
     first } from "rxjs/operators";
 import { SPEED, DIRECTIONS, FPS } from "./constants";
 import { Scene, Key, Point2D } from "./types";
-import { move, oppositeDirectionFilter } from "./utils";
+import { move, oppositeDirectionFilter, checkCollision } from "./utils";
 import { createCanvasElement, renderScene, COLS, ROWS } from "./canvas";
 
 const canvas = createCanvasElement();
@@ -59,7 +59,11 @@ const game$: Observable<Scene> = of("Start Game").pipe(
 );
 
 const startGame = () => game$.subscribe(
-    snake => renderScene(ctx, snake)
+    scene =>
+    {
+        checkCollision(scene);
+        renderScene(ctx, scene);
+    }
 );
 
 startGame();
