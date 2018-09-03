@@ -3,7 +3,8 @@ import { animationFrameScheduler,
     interval,
     Observable,
     of,
-    combineLatest } from "rxjs";
+    combineLatest,
+    BehaviorSubject } from "rxjs";
 import { switchMap,
     scan,
     map,
@@ -34,8 +35,8 @@ const direction$: Observable<Point2D> = keydown$.pipe(
     startWith(INITIAL_DIRECTION),
     distinctUntilChanged()
 );
-const apples$: Observable<Point2D[]> = of([{ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) },
-    { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }]);
+const apples: Point2D[] = [{ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) },
+    { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }];
 
 function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
     const topLeft: Point2D = { x:0, y:0 };
@@ -50,7 +51,15 @@ function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
         withLatestFrom(direction$, (_, direction) => direction),
         scan(move, snake)
     );
-    return combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
+    snake$.subscribe(value =>
+        {
+           let index = apples.findIndex(checkCollision.bind(null, value));
+           if (index > -1) {
+               apples.splice(index, 1);
+               apples.push({ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) });
+           }
+        });
+    return combineLatest(snake$, of(apples), (snake, apples) => ({ snake, apples }));
 }
 
 const game$: Observable<Scene> = of("Start Game").pipe(
@@ -59,11 +68,7 @@ const game$: Observable<Scene> = of("Start Game").pipe(
 );
 
 const startGame = () => game$.subscribe(
-    scene =>
-    {
-        checkCollision(scene);
-        renderScene(ctx, scene);
-    }
+    scene => renderScene(ctx, scene)
 );
 
 startGame();

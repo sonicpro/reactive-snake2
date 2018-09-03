@@ -24,10 +24,6 @@ export function oppositeDirectionFilter(accum: Point2D, current: Point2D): Point
   return current;
 }
 
-export function checkCollision(scene: Scene): void {
-  if (scene.apples.filter(a => { return a.x === scene.snake[0].x && a.y === scene.snake[0].y }).length > 0) {
-      console.log("It's collision!");
-  } else {
-      console.log("No collision.");
-  }
+export function checkCollision(snake: Point2D[], apple: Point2D): Boolean {
+  return apple.x === snake[0].x && apple.y === snake[0].y;
 }
