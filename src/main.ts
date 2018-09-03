@@ -3,8 +3,7 @@ import { animationFrameScheduler,
     interval,
     Observable,
     of,
-    combineLatest,
-    BehaviorSubject } from "rxjs";
+    combineLatest } from "rxjs";
 import { switchMap,
     scan,
     map,
@@ -12,8 +11,8 @@ import { switchMap,
     filter, 
     distinctUntilChanged,
     withLatestFrom,
-    first } from "rxjs/operators";
-import { SPEED, DIRECTIONS, FPS } from "./constants";
+    share } from "rxjs/operators";
+import { SPEED, DIRECTIONS, FPS, INITIAL_SNAKE, INITIAL_APPLES, SNAKE_LENGTH } from "./constants";
 import { Scene, Key, Point2D } from "./types";
 import { move, oppositeDirectionFilter, checkCollision } from "./utils";
 import { createCanvasElement, renderScene, COLS, ROWS } from "./canvas";
@@ -25,7 +24,7 @@ document.getElementById("canvasWrapper").appendChild(canvas);
 const INITIAL_DIRECTION = DIRECTIONS[Key.RIGHT];
 
 // "Base" Obsevables.
-const ticks$: Observable<number> = interval(SPEED);
+const ticks$:Observable<number> = interval(SPEED).pipe(share());
 const keydown$: Observable<Event> = fromEvent(document, "keydown");
 const frames$: Observable<number> = interval(1000 / FPS, animationFrameScheduler);
 const direction$: Observable<Point2D> = keydown$.pipe(
@@ -35,31 +34,22 @@ const direction$: Observable<Point2D> = keydown$.pipe(
     startWith(INITIAL_DIRECTION),
     distinctUntilChanged()
 );
-const apples: Point2D[] = [{ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) },
-    { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }];
 
 function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
-    const topLeft: Point2D = { x:0, y:0 };
-    const snake: Array<Point2D> = [ topLeft,
-        { ...topLeft, x: 1 },
-        { ...topLeft, x: 2 },
-        { ...topLeft, x: 3 },
-        { ...topLeft, x: 4 }];
-
     // Run the snake - evaluate the new position based on the current one.
     const snake$ = ticks$.pipe(
         withLatestFrom(direction$, (_, direction) => direction),
-        scan(move, snake)
+        scan(move, INITIAL_SNAKE),
+        share() // Both combineLatest and apples$ will be subscribed to the same Subject wrapping snake$.
     );
-    snake$.subscribe(value =>
-        {
-           let index = apples.findIndex(checkCollision.bind(null, value));
-           if (index > -1) {
-               apples.splice(index, 1);
-               apples.push({ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) });
-           }
-        });
-    return combineLatest(snake$, of(apples), (snake, apples) => ({ snake, apples }));
+    const apples$: Observable<Point2D[]> = snake$.pipe(
+        scan(checkCollision, INITIAL_APPLES),
+        distinctUntilChanged()
+    );
+    const length$: Observable<number> = apples$.pipe(
+        scan((accum: number, _: Point2D[]) => { return accum++; }, SNAKE_LENGTH)
+    );
+    return combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
 }
 
 const game$: Observable<Scene> = of("Start Game").pipe(
