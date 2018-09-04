@@ -3,12 +3,12 @@ import { COLS, ROWS } from "./canvas";
 
 export const SNAKE_LENGTH = 5;
 
-const topLeft: Point2D = { x:0, y:0 };
-export const INITIAL_SNAKE: Array<Point2D> = [ topLeft,
-    { ...topLeft, x: 1 },
-    { ...topLeft, x: 2 },
-    { ...topLeft, x: 3 },
-    { ...topLeft, x: 4 }];
+const head: Point2D = { x: 4, y: 0 };
+export const INITIAL_SNAKE: Array<Point2D> = [ head,
+    { ...head, x: 3 },
+    { ...head, x: 2 },
+    { ...head, x: 1 },
+    { ...head, x: 0 }];
 export const INITIAL_APPLES: Point2D[] = [{ x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) },
     { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }];
 

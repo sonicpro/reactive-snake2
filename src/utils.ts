@@ -1,4 +1,4 @@
-import { Point2D } from "./types";
+import { Point2D, Scene } from "./types";
 import { COLS, ROWS } from "./canvas";
 
 export function move(snake: Array<Point2D>, [direction, length]: [Point2D, number]): Point2D[] {
@@ -34,4 +34,12 @@ export function checkCollision(apples: Point2D[], snake: Point2D[]): Point2D[] {
       return [...apples, { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }];
   }
   return apples;
+}
+
+export function isGameOver(scene: Scene) {
+  let snake = scene.snake;
+  let head = snake[0];
+  let body = snake.slice(1, snake.length);
+
+  return body.some(segment => { return segment.x === head.x && segment.y === head.y; });
 }

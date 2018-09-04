@@ -14,10 +14,11 @@ import { switchMap,
     withLatestFrom,
     share,
     tap,
-    skip } from "rxjs/operators";
+    skip,
+    takeWhile } from "rxjs/operators";
 import { SPEED, DIRECTIONS, FPS, INITIAL_SNAKE, INITIAL_APPLES, SNAKE_LENGTH } from "./constants";
 import { Scene, Key, Point2D } from "./types";
-import { move, oppositeDirectionFilter, checkCollision } from "./utils";
+import { move, oppositeDirectionFilter, checkCollision, isGameOver } from "./utils";
 import { createCanvasElement, renderScene, COLS, ROWS } from "./canvas";
 
 const canvas = createCanvasElement();
@@ -39,8 +40,27 @@ const direction$: Observable<Point2D> = keydown$.pipe(
 );
 
 function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
+    // If we did not have "length" subject, we'd have circular dependency: snake$ depends on snakeLength$, 
+    // apples$ depend on snake$, and snakeLength$ depends on apples$:
+    //                                  apples$_
+    //                                  /     |\
+    //                                 /        \
+    //                                /          \
+    //                              |/_           \
+    //                          snake$-------->snakeLegth$ 
     const length: BehaviorSubject<number> = new BehaviorSubject(SNAKE_LENGTH);
-
+    
+    let score = 0;
+    let h = document.createElement("h3");
+    h.innerHTML = "Your score is " + score;
+    document.getElementById("score").appendChild(h);
+    length.subscribe(value =>
+        {
+            if (value === 1) {
+                score++;
+                h.innerHTML = "Your score is " + score;
+            }
+        });
     const snakeLength$: Observable<number> = length.pipe(
         scan((accum, value) => accum + value) // On subscribing to "length" increased by SNAKE_LENGTH. Then increased by 1.
     )
@@ -66,7 +86,8 @@ function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
 
 const game$: Observable<Scene> = of("Start Game").pipe(
     map(_ => frames$),
-    switchMap(gameLoop)
+    switchMap(gameLoop),
+    takeWhile(scene => !isGameOver(scene))
 );
 
 const startGame = () => game$.subscribe(
