@@ -19,7 +19,7 @@ import { switchMap,
 import { SPEED, DIRECTIONS, FPS, INITIAL_SNAKE, INITIAL_APPLES, SNAKE_LENGTH } from "./constants";
 import { Scene, Key, Point2D } from "./types";
 import { move, oppositeDirectionFilter, checkCollision, isGameOver } from "./utils";
-import { createCanvasElement, renderScene, COLS, ROWS } from "./canvas";
+import { createCanvasElement, renderScene } from "./canvas";
 
 const canvas = createCanvasElement();
 const ctx: CanvasRenderingContext2D = canvas.getContext("2d");
@@ -30,7 +30,6 @@ const INITIAL_DIRECTION = DIRECTIONS[Key.RIGHT];
 // "Base" Obsevables.
 const ticks$:Observable<number> = interval(SPEED).pipe(share());
 const keydown$: Observable<Event> = fromEvent(document, "keydown");
-const frames$: Observable<number> = interval(1000 / FPS, animationFrameScheduler);
 const direction$: Observable<Point2D> = keydown$.pipe(
     map((event: KeyboardEvent) => DIRECTIONS[event.keyCode]),
     filter(direction => !! direction),
@@ -42,7 +41,7 @@ const direction$: Observable<Point2D> = keydown$.pipe(
 function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
     // If we did not have "length" subject, we'd have circular dependency: snake$ depends on snakeLength$, 
     // apples$ depend on snake$, and snakeLength$ depends on apples$:
-    //                                  apples$_
+    //                                  apples$__
     //                                  /     |\
     //                                 /        \
     //                                /          \
@@ -81,17 +80,33 @@ function gameLoop(frameNumber$: Observable<number>): Observable<Scene> {
         tap(_ => length.next(1)) // Increase snake length by 1.
     ).subscribe();
 
-    return combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
+    let scene$ = combineLatest(snake$, apples$, (snake, apples) => ({ snake, apples }));
+    return frameNumber$.pipe(
+        withLatestFrom(scene$),
+        map(array => array[1])
+    );
 }
 
 const game$: Observable<Scene> = of("Start Game").pipe(
-    map(_ => frames$),
+    map(_ => interval(1000 / FPS, animationFrameScheduler)),
     switchMap(gameLoop),
     takeWhile(scene => !isGameOver(scene))
 );
 
 const startGame = () => game$.subscribe(
-    scene => renderScene(ctx, scene)
+    scene => renderScene(ctx, scene),
+    null,
+    () =>
+    {
+        let tableau = document.getElementById("score");
+        while (tableau.firstChild) {
+            //The list is LIVE so it will re-index each call
+            tableau.removeChild(tableau.firstChild);
+        }
+        let h = document.createElement("h3");
+        h.innerHTML = "GAME OVER"
+        tableau.appendChild(h);
+    }
 );
 
 startGame();
